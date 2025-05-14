@@ -1,5 +1,8 @@
+// Load environment variables at the very beginning
 const dotenv = require('dotenv');
-dotenv.config();
+const path = require('path');
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const app = express();
@@ -10,6 +13,7 @@ const captainRoutes = require('./routes/captain.routes');
 const mapsRoutes = require('./routes/maps.routes');
 const rideRoutes = require('./routes/ride.routes');
 
+// Connect to database
 connectToDb();
 
 app.use(cors());

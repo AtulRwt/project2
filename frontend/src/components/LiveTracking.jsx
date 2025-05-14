@@ -1,10 +1,20 @@
-import React, { useState, useEffect } from 'react'
-import { LoadScript, GoogleMap, Marker } from '@react-google-maps/api'
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-const containerStyle = {
-    width: '100%',
-    height: '100%',
-};
+// Fix Leaflet's default icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const center = {
     lat: -3.745,
@@ -12,7 +22,7 @@ const center = {
 };
 
 const LiveTracking = () => {
-    const [ currentPosition, setCurrentPosition ] = useState(center);
+    const [currentPosition, setCurrentPosition] = useState(center);
 
     useEffect(() => {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -34,36 +44,25 @@ const LiveTracking = () => {
         return () => navigator.geolocation.clearWatch(watchId);
     }, []);
 
-    useEffect(() => {
-        const updatePosition = () => {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const { latitude, longitude } = position.coords;
-
-                console.log('Position updated:', latitude, longitude);
-                setCurrentPosition({
-                    lat: latitude,
-                    lng: longitude
-                });
-            });
-        };
-
-        updatePosition(); // Initial position update
-
-        const intervalId = setInterval(updatePosition, 1000); // Update every 10 seconds
-
-    }, []);
-
     return (
-        <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
-            <GoogleMap
-                mapContainerStyle={containerStyle}
-                center={currentPosition}
-                zoom={15}
+        <div style={{ height: '300px', width: '100%', position: 'relative' }}>
+            <MapContainer 
+                center={[currentPosition.lat, currentPosition.lng]} 
+                zoom={15} 
+                style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0 }}
             >
-                <Marker position={currentPosition} />
-            </GoogleMap>
-        </LoadScript>
-    )
-}
+                <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution="&copy; OpenStreetMap contributors"
+                />
+                <Marker position={[currentPosition.lat, currentPosition.lng]}>
+                    <Popup>
+                        You are here
+                    </Popup>
+                </Marker>
+            </MapContainer>
+        </div>
+    );
+};
 
-export default LiveTracking
+export default LiveTracking;

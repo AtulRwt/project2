@@ -2,76 +2,56 @@ const axios = require('axios');
 const captainModel = require('../models/captain.model');
 
 module.exports.getAddressCoordinate = async (address) => {
-    const apiKey = process.env.GOOGLE_MAPS_API;
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
-
-    try {
-        const response = await axios.get(url);
-        if (response.data.status === 'OK') {
-            const location = response.data.results[ 0 ].geometry.location;
-            return {
-                ltd: location.lat,
-                lng: location.lng
-            };
-        } else {
-            throw new Error('Unable to fetch coordinates');
-        }
-    } catch (error) {
-        console.error(error);
-        throw error;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json`;
+    const response = await axios.get(url, { headers: { 'User-Agent': 'QuickWheelsApp' } });
+    if (response.data && response.data.length > 0) {
+        const location = response.data[0];
+        return { ltd: location.lat, lng: location.lon };
+    } else {
+        throw new Error('Unable to fetch coordinates');
     }
-}
+};
 
 module.exports.getDistanceTime = async (origin, destination) => {
     if (!origin || !destination) {
         throw new Error('Origin and destination are required');
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_API;
-
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&key=${apiKey}`;
+    // origin and destination should be objects: { ltd, lng }
+    const apiKey = process.env.ORS_API_KEY;
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${origin.lng},${origin.ltd}&end=${destination.lng},${destination.ltd}`;
 
     try {
-
-
         const response = await axios.get(url);
-        if (response.data.status === 'OK') {
-
-            if (response.data.rows[ 0 ].elements[ 0 ].status === 'ZERO_RESULTS') {
-                throw new Error('No routes found');
-            }
-
-            return response.data.rows[ 0 ].elements[ 0 ];
+        if (
+            response.data &&
+            response.data.features &&
+            response.data.features.length > 0
+        ) {
+            const summary = response.data.features[0].properties.summary;
+            return {
+                distance: summary.distance, // in meters
+                duration: summary.duration  // in seconds
+            };
         } else {
             throw new Error('Unable to fetch distance and time');
         }
-
     } catch (err) {
         console.error(err);
         throw err;
     }
-}
+};
 
 module.exports.getAutoCompleteSuggestions = async (input) => {
-    if (!input) {
-        throw new Error('query is required');
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(input)}&format=json&addressdetails=1&limit=5`;
+    const response = await axios.get(url, { headers: { 'User-Agent': 'QuickWheelsApp' } });
+    if (response.data && response.data.length > 0) {
+        // Return formatted address suggestions
+        return response.data.map(item => item.display_name);
+    } else {
+        return [];
     }
-
-    const apiKey = process.env.GOOGLE_MAPS_API;
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}`;
-
-    try {
-        const response = await axios.get(url);
-        if (response.data.status === 'OK') {
-            return response.data.predictions.map(prediction => prediction.description).filter(value => value);
-        } else {
-            throw new Error('Unable to fetch suggestions');
-        }
-    } catch (err) {
-        console.error(err);
-        throw err;
-    }
-}
+};
 
 module.exports.getCaptainsInTheRadius = async (ltd, lng, radius) => {
 
